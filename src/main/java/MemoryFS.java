@@ -73,6 +73,7 @@ public class MemoryFS extends FileSystemStub {
             stat.st_size.set(savedStat.st_size.intValue());
             stat.st_gid.set(savedStat.st_gid.intValue());
             stat.st_uid.set(savedStat.st_uid.intValue());
+            stat.st_blocks.set(savedStat.st_blocks.intValue());
             stat.st_ctim.tv_sec.set(savedStat.st_ctim.tv_sec.intValue());
             stat.st_ctim.tv_nsec.set(savedStat.st_ctim.tv_nsec.intValue());
             stat.st_atim.tv_sec.set(savedStat.st_atim.tv_sec.intValue());
@@ -150,19 +151,16 @@ public class MemoryFS extends FileSystemStub {
         int len = iNode.getContent().length;
         byte[] content = new byte[(int)size];
         buf.get(0,content,0, (int)size);
-        System.out.println(size);
-        System.out.println(offset);
-        System.out.println(len);
         if (len < offset+size){
             byte[] newcontent = new byte[(int)offset+(int)size];
             System.arraycopy(iNode.getContent(), 0, newcontent, 0, len);
-            System.out.println(new String(newcontent));
             System.arraycopy(content, 0, newcontent, (int)offset, (int)size);
-            System.out.println(new String(newcontent));
             iNode.setContent(newcontent);
             iNode.getStat().st_size.set(newcontent.length);
+            iNode.getStat().st_blocks.set(java.lang.Math.max(2,newcontent.length/512));
         } else {
             System.arraycopy(content, 0, iNode.getContent(), (int) offset, (int) size);
+            iNode.getStat().st_blocks.set(java.lang.Math.max(2,iNode.getContent().length/512));
         }
 
         iNode.getStat().st_atim.tv_sec.set(System.currentTimeMillis()/1000);
@@ -194,13 +192,12 @@ public class MemoryFS extends FileSystemStub {
             parentINode.getStat().st_atim.tv_nsec.set(System.currentTimeMillis()*1000);
             parentINode.getStat().st_mtim.tv_sec.set(System.currentTimeMillis()/1000);
             parentINode.getStat().st_mtim.tv_nsec.set(System.currentTimeMillis()*1000);
-
         }
         MemoryINode mockINode = new MemoryINode();
         // set up the stat information for this inode
         FileStat stat = new FileStat(Runtime.getSystemRuntime());
         stat.st_mode.set(FileStat.S_IFREG | 0444 | 0200);
-        stat.st_size.set(0);
+        stat.st_size.set(2048);
         stat.st_gid.set(unix.getGid());
         stat.st_uid.set(unix.getUid());
         stat.st_ctim.tv_sec.set(System.currentTimeMillis()/1000);
@@ -245,6 +242,17 @@ public class MemoryFS extends FileSystemStub {
         iNode.getStat().st_ctim.tv_sec.set(System.currentTimeMillis()/1000);
         iNode.getStat().st_ctim.tv_nsec.set(System.currentTimeMillis()*1000);
         iNode.getStat().st_nlink.set(iNode.getStat().st_nlink.intValue()+1);
+        File file = new File(newpath);
+        File parentfile = file.getParentFile();
+        if (parentfile.getParentFile() != null && parentfile.getAbsolutePath() != "/") {
+            MemoryINode parentINode = iNodeTable.getINode(parentfile.getAbsolutePath());
+            parentINode.getStat().st_ctim.tv_sec.set(System.currentTimeMillis()/1000);
+            parentINode.getStat().st_ctim.tv_nsec.set(System.currentTimeMillis()*1000);
+            parentINode.getStat().st_atim.tv_sec.set(System.currentTimeMillis()/1000);
+            parentINode.getStat().st_atim.tv_nsec.set(System.currentTimeMillis()*1000);
+            parentINode.getStat().st_mtim.tv_sec.set(System.currentTimeMillis()/1000);
+            parentINode.getStat().st_mtim.tv_nsec.set(System.currentTimeMillis()*1000);
+        }
         iNodeTable.updateINode(newpath,iNode);
         return 0;
     }
@@ -255,6 +263,17 @@ public class MemoryFS extends FileSystemStub {
             return -ErrorCodes.ENONET();
         }
         // delete the file if there are no more hard links
+        File file = new File(path);
+        File parentfile = file.getParentFile();
+        if (parentfile.getParentFile() != null && parentfile.getAbsolutePath() != "/") {
+            MemoryINode parentINode = iNodeTable.getINode(parentfile.getAbsolutePath());
+            parentINode.getStat().st_ctim.tv_sec.set(System.currentTimeMillis()/1000);
+            parentINode.getStat().st_ctim.tv_nsec.set(System.currentTimeMillis()*1000);
+            parentINode.getStat().st_atim.tv_sec.set(System.currentTimeMillis()/1000);
+            parentINode.getStat().st_atim.tv_nsec.set(System.currentTimeMillis()*1000);
+            parentINode.getStat().st_mtim.tv_sec.set(System.currentTimeMillis()/1000);
+            parentINode.getStat().st_mtim.tv_nsec.set(System.currentTimeMillis()*1000);
+        }
         MemoryINode iNode = iNodeTable.getINode(path);
         iNode.getStat().st_ctim.tv_sec.set(System.currentTimeMillis()/1000);
         iNode.getStat().st_ctim.tv_nsec.set(System.currentTimeMillis()*1000);
@@ -277,6 +296,7 @@ public class MemoryFS extends FileSystemStub {
         stat.st_size.set(0);
         stat.st_gid.set(unix.getGid());
         stat.st_uid.set(unix.getUid());
+        stat.st_blocks.set(4);
         stat.st_ctim.tv_sec.set(System.currentTimeMillis()/1000);
         stat.st_ctim.tv_nsec.set(System.currentTimeMillis()*1000);
         stat.st_atim.tv_sec.set(System.currentTimeMillis()/1000);
