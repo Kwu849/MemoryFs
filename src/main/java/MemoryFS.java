@@ -183,6 +183,9 @@ public class MemoryFS extends FileSystemStub {
             return -ErrorCodes.EEXIST();
         }
         File file = new File(path);
+        if (file.getName().length()>255){
+            return -ErrorCodes.ENAMETOOLONG();
+        }
         File parentfile = file.getParentFile();
         if (parentfile.getParentFile() != null && parentfile.getAbsolutePath() != "/") {
             MemoryINode parentINode = iNodeTable.getINode(parentfile.getAbsolutePath());
@@ -237,6 +240,9 @@ public class MemoryFS extends FileSystemStub {
     
     @Override
     public int link(java.lang.String oldpath, java.lang.String newpath) {
+        if (!iNodeTable.containsINode(oldpath)) {
+            return -ErrorCodes.ENONET();
+        }
 
         MemoryINode iNode = iNodeTable.getINode(oldpath);
         iNode.getStat().st_ctim.tv_sec.set(System.currentTimeMillis()/1000);
@@ -289,6 +295,22 @@ public class MemoryFS extends FileSystemStub {
 
     @Override
     public int mkdir(String path, long mode) {
+        File newfile = new File(path);
+        if (newfile.getName().length()>255){
+            return -ErrorCodes.ENAMETOOLONG();
+        }
+        File parentfile = newfile.getParentFile();
+        if (parentfile.getParentFile() != null && parentfile.getAbsolutePath() != "/") {
+            MemoryINode parentINode = iNodeTable.getINode(parentfile.getAbsolutePath());
+            parentINode.getStat().st_ctim.tv_sec.set(System.currentTimeMillis()/1000);
+            parentINode.getStat().st_ctim.tv_nsec.set(System.currentTimeMillis()*1000);
+            parentINode.getStat().st_atim.tv_sec.set(System.currentTimeMillis()/1000);
+            parentINode.getStat().st_atim.tv_nsec.set(System.currentTimeMillis()*1000);
+            parentINode.getStat().st_mtim.tv_sec.set(System.currentTimeMillis()/1000);
+            parentINode.getStat().st_mtim.tv_nsec.set(System.currentTimeMillis()*1000);
+            parentINode.getStat().st_nlink.set(parentINode.getStat().st_nlink.intValue()+1);
+
+        }
         MemoryINode mockINode = new MemoryINode();
         // set up the stat information for this inode
         FileStat stat = new FileStat(Runtime.getSystemRuntime());
